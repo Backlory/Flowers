@@ -1,14 +1,62 @@
-# 训练有关函数
+from sys import path
+import numpy as np
+import cv2
+import random
+from datetime import datetime
+from data.data_loading import load_data
 
-# TODO:
-# 数据读取
-# 训练集分割
-# 预处理
-# ROI提取
-# 特征提取
-# 特征编码
-# 模型初始化
-# 权重加载
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import classification_report                         
+from sklearn.metrics import confusion_matrix
 
-# 测试
-# 保存测试结果
+import model.feature_extract as m_fet
+import model.feature_encode as m_fed
+import model.train_strategy as m_ts
+
+from weights.weightio import save_obj, load_obj
+import utils.img_display as u_idsip
+from utils.img_display import prepare_path, save_pic
+
+
+if __name__ =='__main__':
+    #变量准备
+    experiment_type = 'test'   #, train_ori, train_expend
+    timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
+    experiment_dir = 'experiment/'+ timenow +'/'
+    prepare_path(experiment_dir)
+    
+    #数据加载
+    Dataset_imgs, Dataset_labels = load_data('data\\data_'+experiment_type, datatype=experiment_type)
+    print('size of imgs and labels in testset:')
+    print(Dataset_imgs.shape)
+    print(Dataset_labels.shape)
+    trained_model = load_obj('weights\\trained_model.joblib')
+    
+    #数据采样
+    readlist = list(range(len(Dataset_imgs)))
+    Dataset_imgs = Dataset_imgs[readlist]
+    Dataset_labels = Dataset_labels[readlist]
+
+
+    # 特征列表提取
+    mode_fet = 'Hu'
+    Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
+                                                mode_fet,
+                                                True)
+    
+
+    # 特征编码
+    mode_encode = 'normal'          #bagofword, normal
+    X_dataset,  Y_dataset= m_fed.Featurencoder( Dataset_fea_list,
+                                                Dataset_labels,
+                                                mode_encode
+                                                )
+    
+    #获取测试集数据
+    x_test, y_test_gt = X_dataset, Y_dataset
+    
+    #测试
+    y_test_pred = trained_model.predict(x_test)
+
+    print(confusion_matrix(y_test_gt, y_test_pred))
+    print(classification_report(y_test_gt, y_test_pred, zero_division=1, digits=4, output_dict=False))
