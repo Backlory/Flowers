@@ -5,7 +5,6 @@ import random
 from datetime import datetime
 from data.data_loading import load_data
 
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import classification_report                         
 from sklearn.metrics import confusion_matrix
 
@@ -13,13 +12,15 @@ import model.feature_extract as m_fet
 import model.feature_encode as m_fed
 import model.train_strategy as m_ts
 
-from weights.weightio import save_obj, load_obj
-import utils.img_display as u_idsip
-from utils.img_display import prepare_path, save_pic
+from weights.weightio import load_obj
+from utils.img_display import prepare_path
 
 
 if __name__ =='__main__':
     #变量准备
+    mode_fet = 'Colorm'                 #Hu, Colorm
+    mode_encode = 'normal'          #bagofword, normal
+    #
     experiment_type = 'test'   #, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
     experiment_dir = 'experiment/'+ timenow +'/'
@@ -39,14 +40,11 @@ if __name__ =='__main__':
 
 
     # 特征列表提取
-    mode_fet = 'Hu'
     Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
                                                 mode_fet,
                                                 True)
-    
 
     # 特征编码
-    mode_encode = 'normal'          #bagofword, normal
     X_dataset,  Y_dataset= m_fed.Featurencoder( Dataset_fea_list,
                                                 Dataset_labels,
                                                 mode_encode

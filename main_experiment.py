@@ -20,7 +20,10 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    
+    mode_fet = 'Colorm'                 #Hu, Colorm
+    mode_encode = 'normal'          #bagofword, normal
+    mode_train = 'SVC'              #SVC
+    #
     experiment_type = 'train_ori'   #test, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
     experiment_dir = 'experiment/'+ timenow +'/'
@@ -47,29 +50,26 @@ if __name__ =='__main__':
     
 
     # 特征列表提取
-    mode_fet = 'Hu'
     try:
-        Dataset_fea_list = load_obj('data\\'+ experiment_type +'_fealist_'+mode_fet+'.joblib')
+        Dataset_fea_list = load_obj(f'data\\{experiment_type}_{mode_fet}_{mode_encode}_{mode_train}_fea.joblib')
     except:
         Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
                                                     mode_fet,
                                                     True)
-        save_obj(Dataset_fea_list, 'data\\'+ experiment_type +'_fealist_'+mode_fet+'.joblib')
+        save_obj(Dataset_fea_list, f'data\\{experiment_type}_{mode_fet}_{mode_encode}_{mode_train}_fea.joblib')
     
 
     # 特征编码
-    mode_encode = 'normal'          #bagofword, normal
     try:
-        X_dataset,  Y_dataset = load_obj('data\\'+ experiment_type +'_encode_'+mode_encode+'.joblib')
+        X_dataset,  Y_dataset = load_obj(f'data\\{experiment_type}_{mode_fet}_{mode_encode}_{mode_train}_encode.joblib')
     except:
         X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_fea_list,
                                                         Dataset_labels,
                                                         mode_encode
                                                         )
-        save_obj((X_dataset,  Y_dataset), 'data\\'+ experiment_type +'_encode_'+mode_encode+'.joblib')
+        save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{mode_fet}_{mode_encode}_{mode_train}_encode.joblib')
     
     #K折交叉验证
-    mode_train = 'SVC'              #SVC
     for K_fold_size in [4]:
         skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=999) #交叉验证，分层抽样
         
@@ -82,7 +82,7 @@ if __name__ =='__main__':
             x_test, y_test_gt = X_dataset[test_index], Y_dataset[test_index]
             
             #训练
-            trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, display=True) 
+            trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, display=True)
             
             #测试
             y_test_pred = trained_model.predict(x_test)
@@ -98,7 +98,7 @@ if __name__ =='__main__':
         print(conf_mat)
         print(report_str)
 
-        #评估报告打印
+        #评估报告打印 
         performence_report = f'K_fold_size={K_fold_size}'
         performence_report += '\n' + str(timenow)
         performence_report += '\n' + f'mode_fet={mode_fet}, mode_encode={mode_encode}, mode_train={mode_train}'

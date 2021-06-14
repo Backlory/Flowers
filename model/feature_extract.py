@@ -35,13 +35,40 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
     if mode == 'Hu':
         #Hu不变矩
         PSR_Dataset_Vectors = get_Vectors(PSR_Dataset_img, fea_hu_moments)
-    elif mode == '':
+    elif mode == 'Colorm':
+        PSR_Dataset_Vectors = get_Vectors(PSR_Dataset_img, fea_color_moments)
         pass
 
     #处理结束
 
     return PSR_Dataset_Vectors
 #====================================================================
+def fea_color_moments(img_cv):
+    
+    hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    color_feature = []
+    # The first central moment - average 
+    h_mean = np.mean(h)  # np.sum(h)/float(N)
+    s_mean = np.mean(s)  # np.sum(s)/float(N)
+    v_mean = np.mean(v)  # np.sum(v)/float(N)
+    color_feature.extend([h_mean, s_mean, v_mean])
+    # The second central moment - standard deviation
+    h_std = np.std(h)  # np.sqrt(np.mean(abs(h - h.mean())**2))
+    s_std = np.std(s)  # np.sqrt(np.mean(abs(s - s.mean())**2))
+    v_std = np.std(v)  # np.sqrt(np.mean(abs(v - v.mean())**2))
+    color_feature.extend([h_std, s_std, v_std])
+    # The third central moment - the third root of the skewness
+    h_skewness = np.mean(abs(h - h.mean())**3)
+    s_skewness = np.mean(abs(s - s.mean())**3)
+    v_skewness = np.mean(abs(v - v.mean())**3)
+    h_thirdMoment = h_skewness**(1./3)
+    s_thirdMoment = s_skewness**(1./3)
+    v_thirdMoment = v_skewness**(1./3)
+    color_feature.extend([h_thirdMoment, s_thirdMoment, v_thirdMoment])
+
+    return color_feature
+
 
 #Hu不变矩
 def fea_hu_moments(img_cv):
@@ -57,6 +84,9 @@ def fea_hu_moments(img_cv):
     humoments = -np.log10(np.abs(humoments))
     return humoments
 
+
+
+
 #====================================================================
 def get_Vectors(imgs, func, **kwargs):
     '''
@@ -69,6 +99,7 @@ def get_Vectors(imgs, func, **kwargs):
     result = []
     for idx, img in enumerate(imgs):
         temp = func(img, **kwargs)
+        temp = np.array(temp)
         result.append(temp)
         if img_num>10:
             if idx % int(img_num/10) == int(img_num/10)-1:
