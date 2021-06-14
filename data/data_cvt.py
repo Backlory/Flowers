@@ -29,7 +29,8 @@ if __name__ == '__main__':
             print(filename_list[i])
             os.rename(filename_list[i], filename_list[i]+'66')
     '''
-    
+    '''
     dir1 = 'data\\data_test'
     for filename in os.listdir(dir1):
         os.rename(dir1+'\\'+filename, dir1+'\\'+filename[:-2])
+    '''

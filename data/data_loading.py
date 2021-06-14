@@ -4,7 +4,8 @@ import cv2
 
 def load_data(dataset_path, datatype='train_ori'):
     '''
-    输入路径，数据类型，读取数据
+    输入路径，数据类型，读取数据。
+    datatype = ['train_expend', 'test', 'train_ori']
     '''
     assert(datatype in ['train_expend', 'test', 'train_ori'])
     labels = []
