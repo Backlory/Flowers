@@ -4,8 +4,6 @@ import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.cluster import KMeans
         
-import utils.structure_trans as u_st
-import utils.img_display as u_idsip
 from utils.tools import colorstr, tic, toc
 from utils.tools import fun_run_time
 
