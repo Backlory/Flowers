@@ -1,36 +1,37 @@
 import os
 import numpy as np
 import cv2
-from torch.utils.data import Dataset
 
-class PSR_Dataset(Dataset):
-    def __init__(self, dataset_path):
-        self.data_paths_list = []
-        self.data_labels_list = []
-        self.num2label = {  0:'paper',
-                            1:'scissors',
-                            2:'rock'
-                            }
-        self.dataset_paths = [os.path.join(dataset_path, label) for label in ['paper','scissors','rock']]
-        for idx, dataset_path in enumerate(self.dataset_paths):
-            data_path_list = self.get_read_file_list(dataset_path)
-            self.data_paths_list = self.data_paths_list + data_path_list
-            self.data_labels_list = self.data_labels_list + [idx]*len(data_path_list)
+def load_data(dataset_path, datatype='train_ori'):
+    '''
+    输入路径，数据类型，读取数据
+    '''
+    assert(datatype in ['train_expend', 'test', 'train_ori'])
+    labels = []
+    filedirlist = []
+    if datatype=='train_expend' or datatype=='train_ori':
+        for folders in os.listdir(dataset_path):
+            folder_path = dataset_path+'\\'+folders
+            for filename in os.listdir(folder_path):
+                path = folder_path +'\\'+ filename
+                label = int(folders)
+                #
+                filedirlist.append(path)
+                labels.append(label)
+    elif datatype=='test':
+        for filename in os.listdir(dataset_path):
+            path = dataset_path +'\\'+ filename
+            label = int(filename[0:2])
+            #
+            filedirlist.append(path)
+            labels.append(label)
     #
-    def __getitem__(self, index):
-        data_path = self.data_paths_list[index]
-        data_label = self.data_labels_list[index]
-        img = cv2.imread(data_path, 1)
-        return img, data_label
+    imgs = []
+    for filedir in filedirlist:
+        img = cv2.imread(filedir, cv2.IMREAD_COLOR)
+        imgs.append(img)
     #
-    def __len__(self):
-        return len(self.data_labels_list)
-    #
-    def get_read_file_list(self, path):
-        """eg.
-            >>read_file_list('data\\rock\\')
-            ['data\\rock\\rock07-k03-118.png',...]
-        """
-        files_list = os.listdir(path)
-        file_path_list = [os.path.join(path, img) for img in files_list]
-        return file_path_list
+    imgs = np.array(imgs, dtype=np.uint8)
+    labels = np.array(labels)
+    return imgs, labels
+    
