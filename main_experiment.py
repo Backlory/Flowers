@@ -20,8 +20,8 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    mode_fet = 'SIFT'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY
-    #mode_encode = 'bagofword'          #bagofword, normal
+    mode_fet = 'Colorm_HOG_DAISY'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY
+    mode_encode = 'bagofword'          #bagofword, normal
     mode_train = 'PCA_SVC'              #PCA_SVC
     #
     experiment_type = 'train_ori'   #test, train_ori, train_expend
@@ -48,25 +48,20 @@ if __name__ =='__main__':
         disp_sample_list = random.sample(range(len(readlist)), 16) #9,16,64
     #u_idsip.show_pic(Dataset_imgs[disp_sample_list])
     
-
-    # 特征列表提取
-    try:
-        Dataset_fea_list = load_obj(f'data\\{experiment_type}_{mode_fet}_{mode_train}_fea.joblib')
-    except:
-        Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
-                                                    mode_fet,
-                                                    True)
-        save_obj(Dataset_fea_list, f'data\\{experiment_type}_{mode_fet}_{mode_train}_fea.joblib')
-    
-
-    # 特征编码
-    if len(Dataset_fea_list[0].shape)==1:
-        mode_encode = 'normal'
-    else:
-        mode_encode = 'bagofword'
+    # 特征列表提取与编码
     try:
         X_dataset,  Y_dataset = load_obj(f'data\\{experiment_type}_{mode_fet}_{mode_train}_encode.joblib')
     except:
+        # 特征提取
+        Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
+                                                    mode_fet,
+                                                    True)
+        # 判断编码类型
+        if len(Dataset_fea_list[0].shape)==1:
+            mode_encode = 'normal'
+        else:
+            mode_encode = 'bagofword'
+        # 特征编码
         X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_fea_list,
                                                         Dataset_labels,
                                                         mode_encode
@@ -112,7 +107,7 @@ if __name__ =='__main__':
         performence_report += '\n' + '-'*50
         performence_report += '\n' + str(report_str)
 
-        path = experiment_dir+f'performence_{experiment_type}_{mode_fet}_{mode_train}_K={K_fold_size}.txt'
+        path = experiment_dir+f'performence_{experiment_type}_{mode_train}_{mode_fet}_K={K_fold_size}.txt'
         with open(path, 'w', encoding='utf-8') as f:
             f.write(performence_report)
             f.close()

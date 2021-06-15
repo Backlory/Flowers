@@ -18,8 +18,8 @@ from utils.img_display import prepare_path
 
 if __name__ =='__main__':
     #变量准备
-    mode_fet = 'Colorm'                 #Hu, Colorm
-    mode_encode = 'normal'          #bagofword, normal
+    mode_fet = 'Colorm_HOG_DAISY'                 #Hu, Colorm
+    #mode_encode = 'normal'          #bagofword, normal
     #
     experiment_type = 'test'   #, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
@@ -43,7 +43,10 @@ if __name__ =='__main__':
     Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
                                                 mode_fet,
                                                 True)
-
+    if len(Dataset_fea_list[0].shape)==1:
+        mode_encode = 'normal'
+    else:
+        mode_encode = 'bagofword'
     # 特征编码
     X_dataset,  Y_dataset= m_fed.Featurencoder( Dataset_fea_list,
                                                 Dataset_labels,
