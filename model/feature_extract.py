@@ -34,21 +34,34 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
     #特征获取
     if mode == 'Hu':
         #Hu不变矩
-        PSR_Dataset_Vectors = get_Vectors(PSR_Dataset_img, fea_hu_moments)
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_hu_moments)
     elif mode == 'Colorm':
-        PSR_Dataset_Vectors = get_Vectors(PSR_Dataset_img, fea_color_moments)
-        pass
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_color_moments)
+    elif mode == 'SIFT':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, feas_SIFT)
+    elif mode == 'greycomatrix':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_greycomatrix)
+    elif mode == 'HOG':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_HOG)
+    elif mode == 'LBP':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_LBP)
+    elif mode == 'DAISY':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_daisy)
+    elif mode == 'SIFT':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, feas_SIFT)
+        
+        
 
     #处理结束
 
-    return PSR_Dataset_Vectors
+    return Dataset_fea_list
 #====================================================================
 def fea_color_moments(img_cv):
     
     hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv)
     color_feature = []
-    # The first central moment - average 
+    # The first central moment - average
     h_mean = np.mean(h)  # np.sum(h)/float(N)
     s_mean = np.mean(s)  # np.sum(s)/float(N)
     v_mean = np.mean(v)  # np.sum(v)/float(N)
@@ -84,7 +97,63 @@ def fea_hu_moments(img_cv):
     humoments = -np.log10(np.abs(humoments))
     return humoments
 
+#SIFT特征
+def feas_SIFT(img_cv):
+    sift = cv2.xfeatures2d.SIFT_create()
+    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    kp1, des1 = sift.detectAndCompute(img_cv,None)
+    des1 = np.array(des1, dtype=np.uint8)
+    return des1
 
+#灰度共生矩阵导出量
+def fea_greycomatrix(img_cv):
+    from skimage import feature as ft
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    img_GRAY = img_GRAY.astype(np.uint8, )
+    #
+    grmt = ft.greycomatrix(img_GRAY, [1], [0, np.pi/4, np.pi/2, 3*np.pi/4])
+    feas = ft.greycoprops(grmt, 'contrast').flatten()
+    feas = np.concatenate((feas, ft.greycoprops(grmt, 'dissimilarity').flatten()),axis=0)
+    feas = np.concatenate((feas, ft.greycoprops(grmt, 'homogeneity').flatten()),axis=0)
+    feas = np.concatenate((feas, ft.greycoprops(grmt, 'ASM').flatten()),axis=0)
+    feas = np.concatenate((feas, ft.greycoprops(grmt, 'energy').flatten()),axis=0)
+    feas = np.concatenate((feas, ft.greycoprops(grmt, 'correlation').flatten()),axis=0)
+    return feas
+
+#HOG特征
+def fea_HOG(img_cv):
+    from skimage import feature as ft
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    img_GRAY = img_GRAY.astype(np.uint8)
+    #
+    feas = ft.hog(img_GRAY)
+    return feas
+
+#LBP特征
+def fea_LBP(img_cv):
+    from skimage import feature as ft
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    img_GRAY = img_GRAY.astype(np.uint8)
+    #
+    lbp_map = ft.local_binary_pattern(img_GRAY, 8, 1)
+    max_bins = int(np.max(lbp_map) + 1)
+    feas, _ = np.histogram(lbp_map, normed=True, bins=max_bins, range=(0, max_bins))
+    return feas
+
+#DAISY特征
+def fea_daisy(img_cv):
+    from skimage import feature as ft
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    img_GRAY = img_GRAY.astype(np.uint8)
+    #
+    feas = ft.daisy(img_GRAY)
+    feas = feas.flatten()
+    return feas
+
+from skimage import feature as ft
+feas = ft.haar
+feas = ft.BRIEF
+feas = ft.ORB
 
 
 #====================================================================

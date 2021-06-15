@@ -40,7 +40,8 @@ def Featurencoder(datas_list, labels, mode, onehot=False, display=True):
         word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
         word_dict.fit(word_bag)
         #编码转化，视觉词统计
-        X_dataset = np.zeros((N, word_num))
+        _dtype = word_bag.dtype
+        X_dataset = np.zeros((N, word_num), dtype=_dtype)
         for idx, data in enumerate(datas_list):
             words = word_dict.predict(data)
             for word in words:
