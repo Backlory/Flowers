@@ -20,7 +20,8 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    mode_fet = 'Colorm_HOG_DAISY'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY
+    # Colorm HOG DAISY
+    mode_fet = 'HOG'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm
     mode_encode = 'bagofword'          #bagofword, normal
     mode_train = 'PCA_SVC'              #PCA_SVC
     #
@@ -111,5 +112,5 @@ if __name__ =='__main__':
         with open(path, 'w', encoding='utf-8') as f:
             f.write(performence_report)
             f.close()
-
+    trained_model = [mode_fet, mode_encode, mode_train, trained_model]
     save_obj(trained_model, 'weights\\trained_model.joblib')

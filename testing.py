@@ -18,8 +18,6 @@ from utils.img_display import prepare_path
 
 if __name__ =='__main__':
     #变量准备
-    mode_fet = 'Colorm_HOG_DAISY'                 #Hu, Colorm
-    #mode_encode = 'normal'          #bagofword, normal
     #
     experiment_type = 'test'   #, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
@@ -31,7 +29,7 @@ if __name__ =='__main__':
     print('size of imgs and labels in testset:')
     print(Dataset_imgs.shape)
     print(Dataset_labels.shape)
-    trained_model = load_obj('weights\\trained_model.joblib')
+    mode_fet, mode_encode, mode_train, trained_model = load_obj('weights\\trained_model.joblib')
     
     #数据采样
     readlist = list(range(len(Dataset_imgs)))

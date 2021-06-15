@@ -10,6 +10,7 @@ from sys import api_version
 import cv2
 import random
 import numpy as np
+from numba import jit
 from matplotlib import pyplot as plt
 
 import utils.structure_trans as u_st
@@ -56,6 +57,8 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
             f1, f2, f3 = item
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
+    elif mode=='glgcm':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
         
         
 
@@ -158,20 +161,20 @@ def fea_daisy(img_cv):
     return feas
 
 #灰度梯度共生矩阵
-from numba import jit
 
-def fea_glgcm(img_gray, ngrad=16, ngray=16):
+@jit
+def fea_glgcm(img_cv, ngrad=16, ngray=16):
     '''
     Gray Level-Gradient Co-occurrence Matrix,取归一化后的灰度值、梯度值分别为16、16
     glgcm_features = glgcm(img_gray, 15, 15)
     '''
-    # 利用sobel算子分别计算x-y方向上的梯度值
-    gsx = cv2.Sobel(img_gray, cv2.CV_64F, 1, 0, ksize=3)
-    gsy = cv2.Sobel(img_gray, cv2.CV_64F, 0, 1, ksize=3)
-    height, width = img_gray.shape
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    gsx = cv2.Sobel(img_GRAY, cv2.CV_64F, 1, 0, ksize=3)
+    gsy = cv2.Sobel(img_GRAY, cv2.CV_64F, 0, 1, ksize=3)
+    height, width = img_GRAY.shape
     grad = (gsx ** 2 + gsy ** 2) ** 0.5 # 计算梯度值
     grad = np.asarray(1.0 * grad * (ngrad-1) / grad.max(), dtype=np.int16)
-    gray = np.asarray(1.0 * img_gray * (ngray-1) / img_gray.max(), dtype=np.int16) # 0-255变换为0-15
+    gray = np.asarray(1.0 * img_GRAY * (ngray-1) / img_GRAY.max(), dtype=np.int16) # 0-255变换为0-15
     gray_grad = np.zeros([ngray, ngrad]) # 灰度梯度共生矩阵
     for i in range(height):
         for j in range(width):
@@ -179,8 +182,9 @@ def fea_glgcm(img_gray, ngrad=16, ngray=16):
             grad_value = grad[i][j]
             gray_grad[gray_value][grad_value] += 1
     gray_grad = 1.0 * gray_grad / (height * width) # 归一化灰度梯度矩阵，减少计算量
-    glgcm_features = get_glgcm_features(gray_grad)
-    return glgcm_features
+    feas = get_glgcm_features(gray_grad)
+    return feas
+
 @jit
 def get_glgcm_features(mat):
     '''根据灰度梯度共生矩阵计算纹理特征量，包括小梯度优势，大梯度优势，灰度分布不均匀性，梯度分布不均匀性，能量，灰度平均，梯度平均，
@@ -223,9 +227,21 @@ def get_glgcm_features(mat):
     for i in range(mat.shape[0]):
         for j in range(mat.shape[1]):
             corelation += (i - gray_mean) * (j - grads_mean) * mat[i][j]
-    glgcm_features = [small_grads_dominance, big_grads_dominance, gray_asymmetry, grads_asymmetry, energy, gray_mean, grads_mean,
-        gray_variance, grads_variance, corelation, gray_entropy, grads_entropy, entropy, inertia, differ_moment]
-    return np.round(glgcm_features, 4)
+    glgcm_features = [  small_grads_dominance,
+                        big_grads_dominance, 
+                        gray_asymmetry, 
+                        grads_asymmetry, 
+                        energy, gray_mean, 
+                        grads_mean,
+                        gray_variance, 
+                        grads_variance, 
+                        corelation, 
+                        gray_entropy, 
+                        grads_entropy, 
+                        entropy, 
+                        inertia, 
+                        differ_moment]
+    return np.round(glgcm_features, 8)
 
 
 
