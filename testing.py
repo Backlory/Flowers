@@ -22,7 +22,7 @@ if __name__ =='__main__':
     experiment_type = 'test'   #, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
     experiment_dir = 'experiment/'+ timenow +'/'
-    prepare_path(experiment_dir)
+    #prepare_path(experiment_dir)
     
     #数据加载
     Dataset_imgs, Dataset_labels = load_data('data\\data_'+experiment_type, datatype=experiment_type)

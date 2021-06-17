@@ -16,19 +16,12 @@ def get_trained_model(x_train, y_train, trainmode, display=True):
         print(colorstr('='*50, 'red'))
         print(colorstr('Training...'))
 
-    if trainmode =='PCA_SVC':
+    if trainmode in ['PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT']:
         temp = min(len(x_train[0]), 20) #PCA维度
-        trained_model = model_PCA_simply_classifier('SVC', pca_components = temp)
-        trained_model.train(x_train, y_train)
-    elif trainmode =='PCA_RFC':
-        temp = min(len(x_train[0]), 20) #PCA维度
-        trained_model = model_PCA_simply_classifier('RFC', pca_components = temp)
+        temp2 = trainmode[4:]
+        trained_model = model_PCA_simply_classifier(temp2, pca_components = temp)
         trained_model.train(x_train, y_train)
     else:
-        #trained_model = model_PCA_simply_classifier('DT', pca_components = temp)
-        #trained_model = model_PCA_simply_classifier('NB', pca_components = temp)
-        #trained_model = model_PCA_simply_classifier('KNN', pca_components = temp)
-        #trained_model = model_PCA_simply_classifier('GBDT', pca_components = temp)
         #
         #trained_model = model_PCA_simply_classifier('SVR', pca_components = temp)
         #trained_model = model_PCA_simply_classifier('RFR', pca_components = temp)

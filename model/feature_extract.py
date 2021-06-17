@@ -12,6 +12,11 @@ import random
 import numpy as np
 from numba import jit
 from matplotlib import pyplot as plt
+from inspect import isfunction
+
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 import utils.structure_trans as u_st
 import utils.img_display as u_idsip
@@ -52,41 +57,81 @@ def Featurextractor(Dataset_imgs, mode = '', display=True):
         Dataset_fea_list = get_Vectors(Dataset_imgs, fea_LBP)
     elif mode == 'DAISY':
         Dataset_fea_list = get_Vectors(Dataset_imgs, fea_daisy)
-    #
+    elif mode=='glgcm':
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_glgcm)
+    # == BOW对象
+    elif mode=='BRISK':
+        Fea_extractor = BOW_extractor(fea_BRISK, 5,  500, 10)
+        Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
+    elif mode == 'SIFT':
+        Fea_extractor = BOW_extractor(feas_SIFT, 10, 500, 10)   #128-10-500-10
+        Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
+    # == 复合对象
+    elif mode=='Colorm_SIFT':
+        funclist = (fea_color_moments, BOW_extractor(feas_SIFT, 10, 500, 10))
+        Fea_extractor = Fea_class_extractor(funclist)
+        Fea_extractor.fit(Dataset_imgs)
+        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
+        #
     elif mode == 'Colorm_HOG_DAISY':
         fea1 = get_Vectors(Dataset_imgs, fea_color_moments)
         fea2 = get_Vectors(Dataset_imgs, fea_HOG)
         fea3 = get_Vectors(Dataset_imgs, fea_daisy)
-        for item in zip(fea1,fea2, fea3):
-            f1, f2, f3 = item
+        for f1, f2, f3 in zip(fea1,fea2, fea3):
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
-    elif mode=='glgcm':
-        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_glgcm)
-    elif mode=='BRISK':
-        Fea_extractor = BOW_extractor(fea_BRISK)
-        Fea_extractor.fit(Dataset_imgs)
-        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
-    elif mode == 'SIFT':
-        Fea_extractor = BOW_extractor(feas_SIFT)
-        Fea_extractor.fit(Dataset_imgs)
-        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
-        
+
     return Dataset_fea_list, Fea_extractor
 # ============================================================================
+class Fea_class_extractor():
+    def __init__(self,funcs):
+        self.extractors = funcs
+    #
+    def fit(self, Dataset_imgs):
+        for extractor in self.extractors:
+            if isfunction(extractor):
+                pass
+            else:
+                Dataset_imgs = extractor.fit_transform(Dataset_imgs)
+    #
+    def extract(self, Dataset_imgs):
+        Dataset_fea_list = []
+        for extractor in self.extractors:
+            if isfunction(extractor):
+                feas = get_Vectors(Dataset_imgs, extractor)
+                feas = np.array(feas)
+            else:
+                feas = extractor.extract(Dataset_imgs)
+                feas = np.array(feas)
+            try:
+                Dataset_fea_list = np.concatenate((Dataset_fea_list, feas), axis=1)
+            except:
+                Dataset_fea_list = feas
+        print(Dataset_fea_list.shape)
+        return Dataset_fea_list
+
+
 class BOW_extractor():
-    def __init__(self, func):
+    def __init__(self, func, pca_num1, word_num, pca_num2):
         self.scaler = None
         self.word_dict = None
         self.func = func
+        self.word_num = word_num
+        self.pca1 = None
+        self.pca_num1 = pca_num1
+        self.pca2 = PCA(pca_num2)
     #
-    def fit(self, Dataset_imgs):
-        Dataset_fea_list = get_Vectors(Dataset_imgs, self.func)
-        self.scaler, self.word_dict = get_bagofword(Dataset_fea_list, 500)  #500
+    def fit_transform(self, Dataset_imgs):
+        Dataset_fea_mats = get_Vectors(Dataset_imgs, self.func)
+        self.pca1, self.scaler, self.word_dict = get_bagofword(Dataset_fea_mats, self.pca_num1, self.word_num)
+        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca, self.scaler, self.word_dict)
+        Dataset_feas = self.pca2.fit_transform(Dataset_feas)
+        return Dataset_feas
     #
     def extract(self, Dataset_imgs):
-        Dataset_fea_mats = get_Vectors(Dataset_imgs, feas_SIFT)
-        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.scaler, self.word_dict)
+        Dataset_fea_mats = get_Vectors(Dataset_imgs, self.func)
+        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca1, self.scaler, self.word_dict)
+        Dataset_feas = self.pca2.transform(Dataset_feas)
         return Dataset_feas
     #
 
@@ -98,45 +143,6 @@ def feas_SIFT(img_cv):
     des1 = np.array(des1, dtype=np.uint8)
     return des1
 
-# ========================================
-def get_bagofword(feas_list, word_num):
-    '''
-    获取归一化器、视觉词典
-    scaler, word_dict = get_bagofword(feas_list)
-    feas = bagofword_transform(feas_list, scaler, word_dict)
-    '''
-    #词袋模型
-    from sklearn.cluster import KMeans
-    from sklearn.preprocessing import StandardScaler
-    #生成词袋
-    word_bag = feas_list[0]   #视觉词袋，m*36
-    for data in feas_list[1:]:
-        word_bag = np.concatenate((word_bag, data), axis=0) 
-    #词袋归一化
-    scaler = StandardScaler()
-    scaler.fit(word_bag)
-    word_bag = scaler.transform(word_bag)
-    #训练词典
-    word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
-    word_dict.fit(word_bag)
-    return scaler, word_dict
-
-def bagofword_transform(feas_list, scaler, word_dict):
-    '''输入长度与图片组相等的多点特征矩阵、归一化器\词典、数字，输出一组稀疏向量
-    scaler, word_dict = get_bagofword(feas_list)
-    feas = bagofword_transform(feas_list, scaler, word_dict)
-    '''
-    _dtype = feas_list[0].dtype
-    feas = np.zeros((len(feas_list), word_dict.n_clusters), dtype=_dtype)
-    for idx, data in enumerate(feas_list):
-        data = scaler.transform(data)
-        words = word_dict.predict(data)
-        for word in words:
-            feas[idx, word] += 1
-    feas = np.array(feas)
-    return feas
-#====================================================================
-
 #BRISK特征
 def fea_BRISK(img_cv):
     from skimage import feature as ft
@@ -145,8 +151,49 @@ def fea_BRISK(img_cv):
     img_GRAY = img_GRAY.astype(np.uint8)
     #
     detector = cv2.BRISK_create()       #BRISK_create, AKAZE_create
-    kp = detector.detect(img_GRAY,None)  
+    kp = detector.detect(img_GRAY,None)
     kp, feas = detector.compute(img_GRAY, kp)
+    return feas
+
+#获取词袋模型
+def get_bagofword(feas_list, pca_num, word_num):
+    '''
+    获取PCA对象、归一化器、视觉词典
+    pca, scaler, word_dict = get_bagofword(feas_list)
+    feas = bagofword_transform(feas_list, pca, scaler, word_dict)
+    '''
+    #词袋模型
+    #生成词袋
+    word_bag = feas_list[0]   #视觉词袋，m*36
+    for data in feas_list[1:]:
+        word_bag = np.concatenate((word_bag, data), axis=0) 
+    #词袋降维？
+    pca = PCA(n_components=pca_num)
+    pca.fit(word_bag)
+    word_bag = pca.transform(word_bag)
+    #词袋归一化
+    scaler = StandardScaler()
+    scaler.fit(word_bag)
+    word_bag = scaler.transform(word_bag)
+    #训练词典
+    word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
+    word_dict.fit(word_bag)
+    return pca, scaler, word_dict
+
+def bagofword_transform(feas_list, pca, scaler, word_dict):
+    '''输入长度与图片组相等的多点特征矩阵、归一化器\词典、数字，输出一组稀疏向量
+    scaler, word_dict = get_bagofword(feas_list)
+    feas = bagofword_transform(feas_list, scaler, word_dict)
+    '''
+    _dtype = feas_list[0].dtype
+    feas = np.zeros((len(feas_list), word_dict.n_clusters), dtype=_dtype)
+    for idx, data in enumerate(feas_list):
+        data = pca.transform(data)
+        data = scaler.transform(data)
+        words = word_dict.predict(data)
+        for word in words:
+            feas[idx, word] += 1
+    feas = np.array(feas)
     return feas
 
 #================================================================

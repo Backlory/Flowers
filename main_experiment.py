@@ -21,8 +21,8 @@ from utils.img_display import prepare_path, save_pic
 if __name__ =='__main__':
     #变量准备
     if_ROI = 'R_'                       #R_, None
-    mode_fet = 'SIFT'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK
-    mode_train = 'PCA_SVC'              #PCA_SVC
+    mode_fet = 'Colorm_SIFT'     #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK, Colorm_SIFT
+    mode_train = 'PCA_RFC'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
     experiment_type = 'train_ori'   #test, train_ori, train_expend
     #
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
