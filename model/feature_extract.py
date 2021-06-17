@@ -36,7 +36,7 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
         print(colorstr('Feature extracting...'))
     #
     num, c, h, w = PSR_Dataset_img.shape
-
+    Fea_extractor = None
 
     #特征获取
     Dataset_fea_list = []
@@ -44,8 +44,6 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
         Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_hu_moments)
     elif mode == 'Colorm':
         Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_color_moments)
-    elif mode == 'SIFT':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, feas_SIFT)
     elif mode == 'greycomatrix':
         Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_greycomatrix)
     elif mode == 'HOG':
@@ -65,15 +63,61 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
             Dataset_fea_list.append(temp)
     elif mode=='glgcm':
         Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
-    elif mode=='glgcm':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
+    elif mode=='BRISK':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_BRISK)
+    elif mode == 'SIFT':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, feas_SIFT)
+
+
+    return Dataset_fea_list, Fea_extractor
         
-        
+def bagofword(feas_list):
+    '''
+    归一化处理器，词袋
+    '''
+    #词袋模型
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+    #生成词袋
+    word_num = 500
+    word_bag = feas_list[0]   #视觉词袋，m*36
+    for data in feas_list[1:]:
+        word_bag = np.concatenate((word_bag, data), axis=0) 
+    scaler = StandardScaler()
+    scaler.fit(word_bag)
+    word_bag = scaler.transform(word_bag)
+    #训练词典
+    #
+    word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
+    word_dict.fit(word_bag)
+    #编码转化，视觉词统计
+    _dtype = word_bag.dtype
+    feas = np.zeros((len(feas_list), word_num), dtype=_dtype)
+    for idx, data in enumerate(feas_list):
+        words = word_dict.predict(data)
+        for word in words:
+            feas[idx, word] += 1
 
     #处理结束
-
-    return Dataset_fea_list
+    feas = np.array(feas)
+    return feas, scaler, word_dict
 #====================================================================
+
+#BRISK特征
+def fea_BRISK(img_cv):
+    from skimage import feature as ft
+    img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    img_GRAY = (img_GRAY - np.min(img_GRAY))/(np.max(img_GRAY)-np.min(img_GRAY))*255
+    img_GRAY = img_GRAY.astype(np.uint8)
+    #
+    detector = cv2.BRISK_create()       #BRISK_create, AKAZE_create
+    kp = detector.detect(img_GRAY,None)  
+    kp, feas = detector.compute(img_GRAY, kp)
+
+    
+    return fea
+
+
 def fea_color_moments(img_cv):
     
     hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)

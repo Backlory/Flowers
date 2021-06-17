@@ -8,7 +8,7 @@ from utils.tools import colorstr, tic, toc
 from utils.tools import fun_run_time
 
 @fun_run_time
-def Featurencoder(datas_list, labels, mode, onehot=False, display=True):
+def Featurencoder(datas_list, labels, mode='normal', onehot=False, display=True):
     '''
     输入：
     datas_list=N个元素的特征列表，list中的每个元素代表一幅图的特征值矩阵
