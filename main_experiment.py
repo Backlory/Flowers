@@ -20,10 +20,13 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    if_ROI = 'R_'                       #R_, None
-    mode_fet = 'CNN'                    #Hu, Colorm, SIFT, greycomatrix, HOG, 
-                                        #LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK, Colorm_SIFT
-                                        #CNN, alexnet, VGG16, shufflenet, ResNet, pyramidnet, efficientnet
+    if_ROI = 'None'                       #R_, None
+    mode_fet = 'Colorm_SIFT'                    #Hu, Colorm, , greycomatrix, HOG, LBP, DAISY, glgcm 
+                                        #SIFT, BRISK, Colorm_SIFT, Colorm_HOG_DAISY
+                                        # 'CNN', 'alexnet', 'VGG16', 'shufflenet', 
+                                        # 'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
+                                        # 'SENet', 'ResNet', 
+
     mode_train = 'PCA_RFC'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
     experiment_type = 'train_ori'   #test, train_ori, train_expend
     #
@@ -76,7 +79,7 @@ if __name__ =='__main__':
                                                         onehot=True
                                                         )
         # 数据增强
-        X_dataset,  Y_dataset = m_fed.data_amplifyer(X_dataset,  Y_dataset, mode_fet)
+        X_dataset,  Y_dataset = m_fed.data_augment(X_dataset,  Y_dataset, mode_fet)
         save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
         save_obj(Fea_extractor, f'weights\\Fea_extractor_{mode_fet}.joblib')
     #======================================================================================

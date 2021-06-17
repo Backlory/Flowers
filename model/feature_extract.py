@@ -128,6 +128,8 @@ class BOW_extractor():
         self.pca1, self.scaler, self.word_dict = get_bagofword(Dataset_fea_mats, self.pca_num1, self.word_num)
         Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca1, self.scaler, self.word_dict)
         Dataset_feas = self.pca2.fit_transform(Dataset_feas)
+        print (f'pca1:',self.pca1.explained_variance_ratio_)
+        print (f'pca2:',self.pca2.explained_variance_ratio_)
         return Dataset_feas
     #
     def extract(self, Dataset_imgs):
@@ -172,13 +174,14 @@ def get_bagofword(feas_list, pca_num, word_num):
     #词袋降维？
     pca = PCA(n_components=pca_num)
     pca.fit(word_bag)
+    #print(f'pca when get BOW:',pca.explained_variance_ratio_)
     word_bag = pca.transform(word_bag)
     #词袋归一化
     scaler = StandardScaler()
     scaler.fit(word_bag)
     word_bag = scaler.transform(word_bag)
     #训练词典
-    word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
+    word_dict = KMeans(n_clusters=word_num,verbose=0, n_init=3) #视觉词典，容量500
     word_dict.fit(word_bag)
     return pca, scaler, word_dict
 
