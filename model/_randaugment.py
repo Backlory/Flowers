@@ -333,7 +333,7 @@ arg_dict = {
 
 class RandomAugment(object):
     '''
-    N为在每次增强时，随机连续使用N次操作；
+    N为在每次增强时，对同一张图像随机连续使用N次操作；
     M为各种增强的幅度。
     from .model._randaugment import RandomAugment
     randaug = RandomAugment(N=2, M=10)
