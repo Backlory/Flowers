@@ -45,41 +45,34 @@ class model_PCA_simply_classifier():
         self.pca = PCA(n_components = pca_components)
         self.classifier = None
         #
-        if classifier =='SVC':
-            #支持向量机分类
+        if classifier =='SVC': #支持向量机分类
             from sklearn.svm import SVC
             self.classifier = SVC(C=1, kernel='rbf', gamma='scale', probability=True, verbose=0)
-        elif classifier == 'SVR':
-            #支持向量机回归
+        elif classifier == 'SVR': #支持向量机回归
             from sklearn.svm import SVR
             self.classifier = SVR(kernel='rbf', verbose=0)
-        elif classifier == 'DT':
-            #决策树
+        elif classifier == 'DT':  #决策树
             from sklearn.tree import DecisionTreeClassifier
             self.classifier = DecisionTreeClassifier(    criterion="gini",
-                                                    splitter="best",
-                                                    max_depth=None)
-        elif classifier == 'RFC':
-            #随机森林
+                                                        splitter="best",
+                                                        max_depth=None)
+        elif classifier == 'RFC':  #随机森林
             from sklearn.ensemble import RandomForestClassifier
             self.classifier = RandomForestClassifier(    n_estimators=100,
                                                     criterion="gini", 
                                                     max_depth=None)
-        elif classifier == 'RFR':
+        elif classifier == 'RFR': 
             from sklearn.ensemble import RandomForestRegressor 
             self.classifier = RandomForestRegressor(    n_estimators=100,
                                                     criterion="gini", 
                                                     max_depth=None)
-        elif classifier == 'NB':
-            #朴素贝叶斯多项式
+        elif classifier == 'NB': #朴素贝叶斯多项式
             from sklearn.naive_bayes import GaussianNB
             self.classifier = GaussianNB()
-        elif classifier == 'KNN':
-            #K最近邻分类器
+        elif classifier == 'KNN': #K最近邻分类器
             from sklearn.neighbors import KNeighborsClassifier
             self.classifier = KNeighborsClassifier()
-        elif classifier == 'LR':
-            #逻辑斯蒂回归
+        elif classifier == 'LR': #逻辑斯蒂回归
             from sklearn.linear_model import LogisticRegression
             self.classifier = LogisticRegression(penalty='l2')
         elif classifier == 'GBDT':

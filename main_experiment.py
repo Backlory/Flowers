@@ -21,7 +21,9 @@ from utils.img_display import prepare_path, save_pic
 if __name__ =='__main__':
     #变量准备
     if_ROI = 'R_'                       #R_, None
-    mode_fet = 'Colorm_SIFT'     #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK, Colorm_SIFT
+    mode_fet = 'CNN'                    #Hu, Colorm, SIFT, greycomatrix, HOG, 
+                                        #LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK, Colorm_SIFT
+                                        #CNN, alexnet, VGG16, shufflenet, ResNet, pyramidnet, efficientnet
     mode_train = 'PCA_RFC'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
     experiment_type = 'train_ori'   #test, train_ori, train_expend
     #
@@ -65,13 +67,16 @@ if __name__ =='__main__':
         Fea_extractor = load_obj( f'weights\\Fea_extractor_{mode_fet}.joblib')   #因为训练阶段训练集测试集一起训练，所以不用load
     except:
         # 特征提取
-        Dataset_fea_list, Fea_extractor = m_fet.Featurextractor(   Dataset_imgs,
-                                                    mode_fet,
-                                                    True)
+        Dataset_feas, Fea_extractor = m_fet.Featurextractor(Dataset_imgs,
+                                                            mode_fet,
+                                                            True)
         # 特征编码
-        X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_fea_list,
-                                                        Dataset_labels
+        X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_feas,
+                                                        Dataset_labels,
+                                                        onehot=True
                                                         )
+        # 数据增强
+        X_dataset,  Y_dataset = m_fed.data_amplifyer(X_dataset,  Y_dataset, mode_fet)
         save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
         save_obj(Fea_extractor, f'weights\\Fea_extractor_{mode_fet}.joblib')
     #======================================================================================
@@ -80,7 +85,7 @@ if __name__ =='__main__':
         skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=999) #交叉验证，分层抽样
         
         y_test_gt_list, y_test_pred_list = [], []
-        for idx, (train_index, test_index) in enumerate(skf.split(X_dataset, Y_dataset)):
+        for idx, (train_index, test_index) in enumerate(skf.split(X_dataset, Dataset_labels)):
             print(f'K = {idx+1} / {skf.n_splits}')
             
             #获取数据

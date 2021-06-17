@@ -7,6 +7,36 @@ from sklearn.cluster import KMeans
 from utils.tools import colorstr, tic, toc
 from utils.tools import fun_run_time
 
+def data_augment(Dataset_imgs, Dataset_labels, mode_fet):
+    Dataset_imgs_amt = []
+    Dataset_labels_amt = []
+    if mode_fet not in  ['CNN', 'CNN', 'alexnet', 'VGG', 'shufflenet', 'ResNet', 'pyramidnet','efficientnet']:
+        pass
+    else:
+        #原图
+        for img in Dataset_imgs:
+            Dataset_imgs_amt.append(img)
+        #翻转
+        #旋转
+        #拉伸
+        #cutmix
+        #mixup
+        #Cutout
+        
+        #randaugment
+        from model._randaugment import RandomAugment
+        randaug = RandomAugment(N=2, M=10)
+        for img in Dataset_imgs:
+            img_amt = randaug(img)
+            Dataset_imgs_amt.append(img_amt)
+            img_amt = randaug(img)
+            Dataset_imgs_amt.append(img_amt)
+
+        
+    Dataset_imgs_amt = np.array(Dataset_imgs_amt)
+    Dataset_labels_amt = np.array(Dataset_labels_amt)
+    return Dataset_imgs_amt, Dataset_labels_amt
+
 @fun_run_time
 def Featurencoder(datas_list, labels, onehot=False, display=True):
     '''
@@ -34,5 +64,5 @@ def Featurencoder(datas_list, labels, onehot=False, display=True):
         Y_dataset = labels
 
     #处理结束，得到二维特征矩阵，每行一个图，每列一个特征
-    assert(len(X_dataset.shape) == 2)
+    #assert(len(X_dataset.shape) == 2)
     return X_dataset,  Y_dataset

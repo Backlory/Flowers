@@ -5,8 +5,6 @@
 # CV图片通道在第四位，平时numpy都放在第二位的
 # 预处理部分。（pic3->pic3)
 import math
-from os import replace
-from sys import api_version
 import cv2
 import random
 import numpy as np
@@ -64,11 +62,11 @@ def Featurextractor(Dataset_imgs, mode = '', display=True):
         Fea_extractor = BOW_extractor(fea_BRISK, 5,  500, 10)
         Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
     elif mode == 'SIFT':
-        Fea_extractor = BOW_extractor(feas_SIFT, 10, 500, 10)   #128-10-500-10
+        Fea_extractor = BOW_extractor(feas_SIFT, 10, 500, 10)   #128-10，500-10
         Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
     # == 复合对象
     elif mode=='Colorm_SIFT':
-        funclist = (fea_color_moments, BOW_extractor(feas_SIFT, 10, 500, 10))
+        funclist = (fea_color_moments, BOW_extractor(feas_SIFT, 32, 512, 9))
         Fea_extractor = Fea_class_extractor(funclist)
         Fea_extractor.fit(Dataset_imgs)
         Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
@@ -80,8 +78,11 @@ def Featurextractor(Dataset_imgs, mode = '', display=True):
         for f1, f2, f3 in zip(fea1,fea2, fea3):
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
-
-    return Dataset_fea_list, Fea_extractor
+    elif mode in ['CNN', 'CNN', 'alexnet', 'VGG', 'shufflenet', 'ResNet', 'pyramidnet','efficientnet']:
+        Dataset_fea_list = Dataset_imgs
+    #
+    Dataset_feas = np.array(Dataset_fea_list)
+    return Dataset_feas, Fea_extractor
 # ============================================================================
 class Fea_class_extractor():
     def __init__(self,funcs):
@@ -107,6 +108,7 @@ class Fea_class_extractor():
                 Dataset_fea_list = np.concatenate((Dataset_fea_list, feas), axis=1)
             except:
                 Dataset_fea_list = feas
+        print('size of feature matrix:')
         print(Dataset_fea_list.shape)
         return Dataset_fea_list
 
@@ -124,7 +126,7 @@ class BOW_extractor():
     def fit_transform(self, Dataset_imgs):
         Dataset_fea_mats = get_Vectors(Dataset_imgs, self.func)
         self.pca1, self.scaler, self.word_dict = get_bagofword(Dataset_fea_mats, self.pca_num1, self.word_num)
-        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca, self.scaler, self.word_dict)
+        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca1, self.scaler, self.word_dict)
         Dataset_feas = self.pca2.fit_transform(Dataset_feas)
         return Dataset_feas
     #

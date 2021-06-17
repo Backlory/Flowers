@@ -17,7 +17,7 @@ from utils.img_display import prepare_path
 
 
 if __name__ =='__main__':
-    #变量准备
+    #变量准备ff
     #
     experiment_type = 'test'   #, train_ori, train_expend
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
@@ -43,12 +43,12 @@ if __name__ =='__main__':
 
     # 特征列表提取
     if Fea_extractor == 0:
-        Dataset_fea_list, _ = m_fet.Featurextractor(   Dataset_imgs,
+        Dataset_fea_list, _ = m_fet.Featurextractor(Dataset_imgs,
                                                     mode_fet,
                                                     True)
     else:
         Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
-        
+
     # 特征编码
     X_dataset,  Y_dataset= m_fed.Featurencoder( Dataset_fea_list,
                                                 Dataset_labels
