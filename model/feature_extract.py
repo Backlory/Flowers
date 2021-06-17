@@ -18,6 +18,11 @@ import utils.img_display as u_idsip
 from utils.tools import colorstr, tic, toc
 from utils.tools import fun_run_time
 
+def ROI(PSR_Dataset_img):
+    PSR_Dataset_img = get_Vectors(PSR_Dataset_img, get_flower_area)
+    PSR_Dataset_img = np.array(PSR_Dataset_img)
+    return PSR_Dataset_img
+
 
 @fun_run_time
 def Featurextractor(PSR_Dataset_img, mode = '', display=True):
@@ -31,6 +36,7 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
         print(colorstr('Feature extracting...'))
     #
     num, c, h, w = PSR_Dataset_img.shape
+
 
     #特征获取
     Dataset_fea_list = []
@@ -57,6 +63,8 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
             f1, f2, f3 = item
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
+    elif mode=='glgcm':
+        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
     elif mode=='glgcm':
         Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
         
@@ -161,7 +169,6 @@ def fea_daisy(img_cv):
     return feas
 
 #灰度梯度共生矩阵
-
 @jit
 def fea_glgcm(img_cv, ngrad=16, ngray=16):
     '''
@@ -184,7 +191,6 @@ def fea_glgcm(img_cv, ngrad=16, ngray=16):
     gray_grad = 1.0 * gray_grad / (height * width) # 归一化灰度梯度矩阵，减少计算量
     feas = get_glgcm_features(gray_grad)
     return feas
-
 @jit
 def get_glgcm_features(mat):
     '''根据灰度梯度共生矩阵计算纹理特征量，包括小梯度优势，大梯度优势，灰度分布不均匀性，梯度分布不均匀性，能量，灰度平均，梯度平均，
@@ -243,6 +249,107 @@ def get_glgcm_features(mat):
                         differ_moment]
     return np.round(glgcm_features, 8)
 
+#区域
+def get_flower_area(img_cv):
+    #1、图像中的像素分为花和背景两类#
+    #花的颜色比背景更鲜艳。给鲜艳程度分等级？#
+    #像素的空间位置比像素值本身更重要。
+    #中心的像素大多都属于花。
+    #相邻的像素大多都是好的。
+    # 目标：判断出超像素。花=1，非花=0
+    # 用超像素的属性均值作为特征，对
+    def gaussian2D_mask(width, height, R_factor):
+        R = np.sqrt(width**2 + height**2)/4 * R_factor #高斯蒙版半径
+        distance_map = np.zeros((height, width))
+        for i in range(height):
+            for j in range(width):
+                dis = np.sqrt((i-height/2)**2+(j-width/2)**2)
+                distance_map[i, j] = np.exp(-0.5*dis/R)*255
+        distance_map = distance_map.astype(np.uint8)
+        return distance_map
+    def graylevel_down(img, obj=16):
+        '''
+        输入图像，输出灰度级降低过的图像。
+        目前是fac=16.
+        256级灰度降低为256/fac级灰度。
+        '''
+        fac = 256/obj
+        temp = img*1.0/fac
+        temp = temp.astype(np.uint8)
+        temp = temp * fac
+        temp = temp.astype(np.uint8)
+        return temp
+
+    #
+    #转换
+    img_cv = graylevel_down(img_cv, 64)
+    img_hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+    i_h, i_s, i_v = cv2.split(img_hsv)
+    i_d = gaussian2D_mask(128, 128, 0.3)
+    
+    #滤波
+    temp = i_h.copy()
+    temp[i_h>35]=1
+    temp[i_h>77]=0
+    i_h = np.where(temp == 1, 56, i_h)
+    i_v = np.where(temp == 1, i_v*0.6, i_v)
+    
+    #统计特征
+    from skimage.segmentation import slic,mark_boundaries
+    img_segments_out = slic(img_cv, n_segments=100, compactness=50, start_label=1).astype(np.uint8)
+    superpixels_fea = []
+    for label in range(np.max(img_segments_out)):
+        sp_h = np.where(img_segments_out==label, i_h, 0).astype(np.uint8)
+        sp_s = np.where(img_segments_out==label, i_s, 0).astype(np.uint8)
+        sp_v = np.where(img_segments_out==label, i_v, 0).astype(np.uint8)
+        sp_d = np.where(img_segments_out==label, i_d*2, 0).astype(np.uint8)   #权重不同
+        fea_vector = np.zeros((7))
+        for idx, item in enumerate([sp_h, sp_s, sp_v, sp_d]):   #sp_r, sp_g, sp_b, 
+            temp = np.sum(item>0)
+            if temp ==0: temp = 1
+            temp = np.sum(item) /temp
+            fea_vector[idx] = temp
+        superpixels_fea.append(fea_vector)
+    #聚类
+    from sklearn.cluster import KMeans
+    kmeans=KMeans(n_clusters=2)
+    kmeans.fit(superpixels_fea)
+    y_pred = kmeans.predict(superpixels_fea)    #超像素标签
+
+    #根据聚类结果转换标签
+    img_segment_mask = np.ones_like(img_segments_out, dtype=np.uint8)
+    for label in range(np.max(img_segments_out)):
+        img_segment_mask[img_segments_out == label] = y_pred[label]
+    
+    # 图像最外围检测
+    fac1 = np.average(i_d[img_segment_mask==0])
+    fac2 = np.average(i_d[img_segment_mask==1])
+    if fac1 > fac2: 
+        img_segment_mask = 1 - img_segment_mask
+    
+    #中心区域保护
+    h, w = img_segment_mask.shape
+    nlabels, labelsmap, stats, centroids = cv2.connectedComponentsWithStats(1-img_segment_mask)
+    for i in range(1, nlabels):
+        regions_size = stats[i,4]
+        centerx = centroids[i,0]
+        centery = centroids[i,1]
+        dis = ((centerx-64)**2+(centery-64)**2)**0.5
+        if  regions_size < h * w * 0.1 and dis < 9999: #300
+            x0 = stats[i,0]
+            y0 = stats[i,1]
+            x1 = stats[i,0]+stats[i,2]
+            y1 = stats[i,1]+stats[i,3]
+            area = np.zeros_like(labelsmap)
+            area[y0:y1, x0:x1] = 1
+            img_segment_mask = np.where(area>0, 1, img_segment_mask)
+    #
+    i_b, i_g, i_r = cv2.split(img_cv)
+    sp_b = np.where(img_segment_mask>0, i_b, 0).astype(np.uint8)
+    sp_g = np.where(img_segment_mask>0, i_g, 0).astype(np.uint8)
+    sp_r = np.where(img_segment_mask>0, i_r, 0).astype(np.uint8)
+    out2 = cv2.merge((sp_b, sp_g, sp_r))
+    return out2
 
 
 

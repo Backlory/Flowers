@@ -29,13 +29,16 @@ if __name__ =='__main__':
     print('size of imgs and labels in testset:')
     print(Dataset_imgs.shape)
     print(Dataset_labels.shape)
-    mode_fet, mode_encode, mode_train, trained_model = load_obj('weights\\trained_model.joblib')
+    mode_fet, mode_encode, mode_train, if_ROI, trained_model = load_obj('weights\\trained_model.joblib')
     
     #数据采样
     readlist = list(range(len(Dataset_imgs)))
     Dataset_imgs = Dataset_imgs[readlist]
     Dataset_labels = Dataset_labels[readlist]
 
+    #ROI
+    if if_ROI == 'R_':
+        Dataset_imgs = m_fet.ROI(Dataset_imgs)
 
     # 特征列表提取
     Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
