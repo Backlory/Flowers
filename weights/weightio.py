@@ -12,7 +12,7 @@ def save_obj(obj, path):
     save_obj(a, 'weights\\2.joblib')
     '''
     joblib.dump(filename=path, value=obj)
-    print(colorstr('mode saved.'))
+    print(colorstr(f'mode saved at {path}'))
     
 
 
@@ -20,8 +20,9 @@ def load_obj(path):
     '''
     model1 = load_obj('weights\\2.joblib')
     '''
-    print(colorstr('mode loaded.'))
-    return joblib.load(filename=path)
+    temp = joblib.load(filename=path)
+    print(colorstr(f'mode loaded at {path}'))
+    return temp
 
 
 

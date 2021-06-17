@@ -29,7 +29,8 @@ if __name__ =='__main__':
     print('size of imgs and labels in testset:')
     print(Dataset_imgs.shape)
     print(Dataset_labels.shape)
-    mode_fet, mode_encode, mode_train, if_ROI, trained_model = load_obj('weights\\trained_model.joblib')
+    if_ROI, mode_fet, trained_model = load_obj('weights\\trained_model.joblib')
+    Fea_extractor = load_obj(f'weights\\Fea_extractor_{mode_fet}.joblib')
     
     #数据采样
     readlist = list(range(len(Dataset_imgs)))
@@ -41,17 +42,16 @@ if __name__ =='__main__':
         Dataset_imgs = m_fet.ROI(Dataset_imgs)
 
     # 特征列表提取
-    Dataset_fea_list = m_fet.Featurextractor(   Dataset_imgs,
-                                                mode_fet,
-                                                True)
-    if len(Dataset_fea_list[0].shape)==1:
-        mode_encode = 'normal'
+    if Fea_extractor == 0:
+        Dataset_fea_list, _ = m_fet.Featurextractor(   Dataset_imgs,
+                                                    mode_fet,
+                                                    True)
     else:
-        mode_encode = 'bagofword'
+        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
+        
     # 特征编码
     X_dataset,  Y_dataset= m_fed.Featurencoder( Dataset_fea_list,
-                                                Dataset_labels,
-                                                mode_encode
+                                                Dataset_labels
                                                 )
     
     #获取测试集数据

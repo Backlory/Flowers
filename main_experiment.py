@@ -20,9 +20,8 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    # Colorm HOG DAISY
-    mode_fet = 'BRISK'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK
     if_ROI = 'R_'                       #R_, None
+    mode_fet = 'SIFT'                 #Hu, Colorm, SIFT, greycomatrix, HOG, LBP, DAISY, Colorm_HOG_DAISY, glgcm, BRISK
     mode_train = 'PCA_SVC'              #PCA_SVC
     experiment_type = 'train_ori'   #test, train_ori, train_expend
     #
@@ -58,12 +57,12 @@ if __name__ =='__main__':
             Dataset_imgs = m_fet.ROI(Dataset_imgs)
             save_obj((Dataset_imgs,  Dataset_labels), f'data\\{experiment_type}_{if_ROI}.joblib')
     else:
-        Dataset_imgs,  Dataset_labels = Dataset_imgs,  Dataset_labels
+        pass
     #======================================================================================
-    # 特征列表提取与编码
+    # 特征列表提取与编码(测试时需Fea_extractor)
     try:
-        #mode_fet, Fea_extractor = load_obj('weights\\Fea_extractor.joblib')   因为训练阶段训练集测试集一起训练，所以不用load
         X_dataset,  Y_dataset = load_obj(f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
+        Fea_extractor = load_obj( f'weights\\Fea_extractor_{mode_fet}.joblib')   #因为训练阶段训练集测试集一起训练，所以不用load
     except:
         # 特征提取
         Dataset_fea_list, Fea_extractor = m_fet.Featurextractor(   Dataset_imgs,
@@ -73,9 +72,8 @@ if __name__ =='__main__':
         X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_fea_list,
                                                         Dataset_labels
                                                         )
-        save_obj([mode_fet, Fea_extractor], 'weights\\Fea_extractor.joblib')
         save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
-    
+        save_obj(Fea_extractor, f'weights\\Fea_extractor_{mode_fet}.joblib')
     #======================================================================================
     #K折交叉验证
     for K_fold_size in [5]:
@@ -120,5 +118,5 @@ if __name__ =='__main__':
         with open(path, 'w', encoding='utf-8') as f:
             f.write(performence_report)
             f.close()
-    trained_model = [mode_train, if_ROI, trained_model]
+    trained_model = (if_ROI, mode_fet, trained_model)
     save_obj(trained_model, 'weights\\trained_model.joblib')

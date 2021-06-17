@@ -18,14 +18,14 @@ import utils.img_display as u_idsip
 from utils.tools import colorstr, tic, toc
 from utils.tools import fun_run_time
 
-def ROI(PSR_Dataset_img):
-    PSR_Dataset_img = get_Vectors(PSR_Dataset_img, get_flower_area)
-    PSR_Dataset_img = np.array(PSR_Dataset_img)
-    return PSR_Dataset_img
+def ROI(Dataset_imgs):
+    Dataset_imgs = get_Vectors(Dataset_imgs, get_flower_area)
+    Dataset_imgs = np.array(Dataset_imgs)
+    return Dataset_imgs
 
 
 @fun_run_time
-def Featurextractor(PSR_Dataset_img, mode = '', display=True):
+def Featurextractor(Dataset_imgs, mode = '', display=True):
     '''
     输入：4d图片集，(num, h, w,  c),BGR\n
 
@@ -35,72 +35,106 @@ def Featurextractor(PSR_Dataset_img, mode = '', display=True):
         print(colorstr('='*50, 'red'))
         print(colorstr('Feature extracting...'))
     #
-    num, c, h, w = PSR_Dataset_img.shape
-    Fea_extractor = None
+    num, c, h, w = Dataset_imgs.shape
+    Fea_extractor = 0
 
     #特征获取
     Dataset_fea_list = []
     if mode == 'Hu':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_hu_moments)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_hu_moments)
     elif mode == 'Colorm':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_color_moments)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_color_moments)
     elif mode == 'greycomatrix':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_greycomatrix)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_greycomatrix)
     elif mode == 'HOG':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_HOG)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_HOG)
     elif mode == 'LBP':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_LBP)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_LBP)
     elif mode == 'DAISY':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_daisy)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_daisy)
     #
     elif mode == 'Colorm_HOG_DAISY':
-        fea1 = get_Vectors(PSR_Dataset_img, fea_color_moments)
-        fea2 = get_Vectors(PSR_Dataset_img, fea_HOG)
-        fea3 = get_Vectors(PSR_Dataset_img, fea_daisy)
+        fea1 = get_Vectors(Dataset_imgs, fea_color_moments)
+        fea2 = get_Vectors(Dataset_imgs, fea_HOG)
+        fea3 = get_Vectors(Dataset_imgs, fea_daisy)
         for item in zip(fea1,fea2, fea3):
             f1, f2, f3 = item
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
     elif mode=='glgcm':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_glgcm)
+        Dataset_fea_list = get_Vectors(Dataset_imgs, fea_glgcm)
     elif mode=='BRISK':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, fea_BRISK)
+        Fea_extractor = BOW_extractor(fea_BRISK)
+        Fea_extractor.fit(Dataset_imgs)
+        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
     elif mode == 'SIFT':
-        Dataset_fea_list = get_Vectors(PSR_Dataset_img, feas_SIFT)
-
-
-    return Dataset_fea_list, Fea_extractor
+        Fea_extractor = BOW_extractor(feas_SIFT)
+        Fea_extractor.fit(Dataset_imgs)
+        Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
         
-def bagofword(feas_list):
+    return Dataset_fea_list, Fea_extractor
+# ============================================================================
+class BOW_extractor():
+    def __init__(self, func):
+        self.scaler = None
+        self.word_dict = None
+        self.func = func
+    #
+    def fit(self, Dataset_imgs):
+        Dataset_fea_list = get_Vectors(Dataset_imgs, self.func)
+        self.scaler, self.word_dict = get_bagofword(Dataset_fea_list, 500)  #500
+    #
+    def extract(self, Dataset_imgs):
+        Dataset_fea_mats = get_Vectors(Dataset_imgs, feas_SIFT)
+        Dataset_feas = bagofword_transform(Dataset_fea_mats, self.scaler, self.word_dict)
+        return Dataset_feas
+    #
+
+#SIFT特征点提取
+def feas_SIFT(img_cv):
+    sift = cv2.xfeatures2d.SIFT_create()
+    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    kp1, des1 = sift.detectAndCompute(img_cv,None)
+    des1 = np.array(des1, dtype=np.uint8)
+    return des1
+
+# ========================================
+def get_bagofword(feas_list, word_num):
     '''
-    归一化处理器，词袋
+    获取归一化器、视觉词典
+    scaler, word_dict = get_bagofword(feas_list)
+    feas = bagofword_transform(feas_list, scaler, word_dict)
     '''
     #词袋模型
     from sklearn.cluster import KMeans
     from sklearn.preprocessing import StandardScaler
     #生成词袋
-    word_num = 500
     word_bag = feas_list[0]   #视觉词袋，m*36
     for data in feas_list[1:]:
         word_bag = np.concatenate((word_bag, data), axis=0) 
+    #词袋归一化
     scaler = StandardScaler()
     scaler.fit(word_bag)
     word_bag = scaler.transform(word_bag)
     #训练词典
-    #
     word_dict = KMeans(n_clusters=word_num,verbose=1) #视觉词典，容量500
     word_dict.fit(word_bag)
-    #编码转化，视觉词统计
-    _dtype = word_bag.dtype
-    feas = np.zeros((len(feas_list), word_num), dtype=_dtype)
+    return scaler, word_dict
+
+def bagofword_transform(feas_list, scaler, word_dict):
+    '''输入长度与图片组相等的多点特征矩阵、归一化器\词典、数字，输出一组稀疏向量
+    scaler, word_dict = get_bagofword(feas_list)
+    feas = bagofword_transform(feas_list, scaler, word_dict)
+    '''
+    _dtype = feas_list[0].dtype
+    feas = np.zeros((len(feas_list), word_dict.n_clusters), dtype=_dtype)
     for idx, data in enumerate(feas_list):
+        data = scaler.transform(data)
         words = word_dict.predict(data)
         for word in words:
             feas[idx, word] += 1
-
-    #处理结束
     feas = np.array(feas)
-    return feas, scaler, word_dict
+    return feas
 #====================================================================
 
 #BRISK特征
@@ -113,11 +147,10 @@ def fea_BRISK(img_cv):
     detector = cv2.BRISK_create()       #BRISK_create, AKAZE_create
     kp = detector.detect(img_GRAY,None)  
     kp, feas = detector.compute(img_GRAY, kp)
+    return feas
 
-    
-    return fea
-
-
+#================================================================
+#颜色矩
 def fea_color_moments(img_cv):
     
     hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
@@ -144,7 +177,6 @@ def fea_color_moments(img_cv):
 
     return color_feature
 
-
 #Hu不变矩
 def fea_hu_moments(img_cv):
     '''
@@ -158,14 +190,6 @@ def fea_hu_moments(img_cv):
     humoments = humoments[:,0]
     humoments = -np.log10(np.abs(humoments))
     return humoments
-
-#SIFT特征
-def feas_SIFT(img_cv):
-    sift = cv2.xfeatures2d.SIFT_create()
-    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-    kp1, des1 = sift.detectAndCompute(img_cv,None)
-    des1 = np.array(des1, dtype=np.uint8)
-    return des1
 
 #灰度共生矩阵导出量
 def fea_greycomatrix(img_cv):
@@ -293,6 +317,7 @@ def get_glgcm_features(mat):
                         differ_moment]
     return np.round(glgcm_features, 8)
 
+#====================================================================
 #区域
 def get_flower_area(img_cv):
     #1、图像中的像素分为花和背景两类#
@@ -394,10 +419,7 @@ def get_flower_area(img_cv):
     sp_r = np.where(img_segment_mask>0, i_r, 0).astype(np.uint8)
     out2 = cv2.merge((sp_b, sp_g, sp_r))
     return out2
-
-
-
-#====================================================================
+#向量组处理
 def get_Vectors(imgs, func, **kwargs):
     '''
     输入图片组和函数、参数字典，输出函数结果
