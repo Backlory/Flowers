@@ -21,14 +21,14 @@ from utils.img_display import prepare_path, save_pic
 if __name__ =='__main__':
     #变量准备
     if_ROI = 'R_'                         #R_, N_
-    mode_fet = 'Colorm_SIFT'                     #Hu, Colorm,  greycomatrix, HOG, LBP, DAISY, glgcm 
+    mode_fet = 'SENet'                     #Hu, Colorm,  greycomatrix, HOG, LBP, DAISY, glgcm 
                                             #SIFT, BRISK, Colorm_SIFT, Colorm_HOG_DAISY
                                             
                                             # 'CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 
                                             # 'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
                                             # 'SENet', 'ResNet'
 
-    mode_train = 'PCA_RFC'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
+    mode_train = 'SENet'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
     experiment_type = 'train_expend'   #test, train_ori, train_expend
     #
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
@@ -90,7 +90,7 @@ if __name__ =='__main__':
             skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=seed) #交叉验证，分层抽样
             
             y_test_gt_list, y_test_pred_list = [], []
-            for idx, (train_index, test_index) in enumerate(skf.split(X_dataset, Dataset_labels)):
+            for idx, (train_index, test_index) in enumerate(skf.split(Y_dataset, Y_dataset)):
                 print(f'K = {idx+1} / {skf.n_splits}')
                 
                 #获取数据

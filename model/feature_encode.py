@@ -26,7 +26,6 @@ def data_augment(Dataset_imgs, Dataset_labels, mode_fet):
         #cutmix
         #mixup
         #Cutout
-        
         #randaugment
         from model._randaugment import RandomAugment
         randaug = RandomAugment(N=2, M=10)
@@ -44,6 +43,7 @@ def data_augment(Dataset_imgs, Dataset_labels, mode_fet):
     Dataset_imgs_amt = np.array(Dataset_imgs_amt)
     Dataset_labels_amt = np.array(Dataset_labels_amt)
     return Dataset_imgs_amt, Dataset_labels_amt
+
 
 @fun_run_time
 def Featurencoder(datas_list, labels, onehot=False, display=True):

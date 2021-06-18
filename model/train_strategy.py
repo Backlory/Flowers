@@ -1,6 +1,15 @@
 # 分类器训练(分类vec，结构规整->独热编码)
 # 
 import numpy as np
+
+import torch
+import torch.nn.functional as  F
+import torch.optim as optim
+from torch.utils import data
+from torchvision import datasets,transforms
+
+
+
 import utils.structure_trans as u_st
 import utils.img_display as u_idsip
 from utils.tools import colorstr, tic, toc
@@ -17,13 +26,30 @@ def get_trained_model(x_train, y_train, trainmode, weights, display=True):
         print(colorstr('Training...'))
 
     if trainmode in ['PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT']:
+    #机器学习
         temp = min(len(x_train[0]), 20) #PCA维度
         temp2 = trainmode[4:]
         trained_model = model_PCA_simply_classifier(temp2, pca_components = temp)
-        
         #
         trained_model.train(x_train, y_train, weights)
-    else:
+    
+    #深度学习
+    elif trainmode in ['CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 'pyramidnet', 'efficientnet',\
+                                                                                'wideresnet', 'DenseNet', 'ResNeXt', 'SENet', 'ResNet']:
+        print(colorstr('pytorch mode.',"magenta"))
+        #
+        network_model = None
+        #初始化网络
+        if trainmode == 'SENet':
+            from model.net.SEResNet import Se_ResNet18
+            network_model = Se_ResNet18()
+        elif trainmode == 'ResNet':
+            from model.net.ResNet import ResNet
+            pass
+        #移入GPU
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        network_model.to(device)
+        #
         #
         #trained_model = model_PCA_simply_classifier('SVR', pca_components = temp)
         #trained_model = model_PCA_simply_classifier('RFR', pca_components = temp)
@@ -33,8 +59,6 @@ def get_trained_model(x_train, y_train, trainmode, weights, display=True):
 
 
 #========================================分类器======================
-
-
 class model_PCA_simply_classifier():
     '''
     直接分类器。先PCA，然后塞入分类器中
@@ -69,8 +93,7 @@ class model_PCA_simply_classifier():
             from sklearn.ensemble import RandomForestRegressor 
             self.classifier = RandomForestRegressor(    n_estimators=100,
                                                     criterion="gini",
-                                                    max_depth=None,
-                                                    min_samples_split=5)
+                                                    max_depth=None)
         elif classifier == 'NB': #朴素贝叶斯多项式
             from sklearn.naive_bayes import GaussianNB
             self.classifier = GaussianNB()
