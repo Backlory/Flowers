@@ -10,12 +10,16 @@ from utils.tools import fun_run_time
 def data_augment(Dataset_imgs, Dataset_labels, mode_fet):
     Dataset_imgs_amt = []
     Dataset_labels_amt = []
-    if mode_fet not in  ['CNN', 'CNN', 'alexnet', 'VGG', 'shufflenet', 'ResNet', 'pyramidnet','efficientnet']:
-        pass
+    if mode_fet not in  ['CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 
+                        'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
+                        'SENet', 'ResNet']:
+        Dataset_imgs_amt = Dataset_imgs
+        Dataset_labels_amt = Dataset_labels
     else:
         #原图
-        for img in Dataset_imgs:
+        for idx, img in enumerate(Dataset_imgs):
             Dataset_imgs_amt.append(img)
+            Dataset_labels_amt.append(Dataset_labels[idx])
         #翻转
         #旋转
         #拉伸
@@ -26,11 +30,15 @@ def data_augment(Dataset_imgs, Dataset_labels, mode_fet):
         #randaugment
         from model._randaugment import RandomAugment
         randaug = RandomAugment(N=2, M=10)
-        for img in Dataset_imgs:
+        for idx, img in enumerate(Dataset_imgs):
+            #
             img_amt = randaug(img)
             Dataset_imgs_amt.append(img_amt)
+            Dataset_labels_amt.append(Dataset_labels[idx])
+            #
             img_amt = randaug(img)
             Dataset_imgs_amt.append(img_amt)
+            Dataset_labels_amt.append(Dataset_labels[idx])
 
         
     Dataset_imgs_amt = np.array(Dataset_imgs_amt)

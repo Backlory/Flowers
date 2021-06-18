@@ -59,14 +59,14 @@ def Featurextractor(Dataset_imgs, mode = '', display=True):
         Dataset_fea_list = get_Vectors(Dataset_imgs, fea_glgcm)
     # == BOW对象
     elif mode=='BRISK':
-        Fea_extractor = BOW_extractor(fea_BRISK, 5,  500, 10)
+        Fea_extractor = BOW_extractor(fea_BRISK, 64, 200, 0) 
         Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
     elif mode == 'SIFT':
-        Fea_extractor = BOW_extractor(feas_SIFT, 10, 500, 10)   #128-10，500-10
+        Fea_extractor = BOW_extractor(feas_SIFT, 64, 200, 0)   #128-10，500-10
         Dataset_fea_list = Fea_extractor.fit_transform(Dataset_imgs)
     # == 复合对象
     elif mode=='Colorm_SIFT':
-        funclist = (fea_color_moments, BOW_extractor(feas_SIFT, 32, 512, 9))
+        funclist = (fea_color_moments, BOW_extractor(feas_SIFT, 64, 200, 0))
         Fea_extractor = Fea_class_extractor(funclist)
         Fea_extractor.fit(Dataset_imgs)
         Dataset_fea_list = Fea_extractor.extract(Dataset_imgs)
@@ -78,7 +78,9 @@ def Featurextractor(Dataset_imgs, mode = '', display=True):
         for f1, f2, f3 in zip(fea1,fea2, fea3):
             temp = np.concatenate((f1, f2, f3), axis=0)
             Dataset_fea_list.append(temp)
-    elif mode in ['CNN', 'CNN', 'alexnet', 'VGG', 'shufflenet', 'ResNet', 'pyramidnet','efficientnet']:
+    elif mode in ['CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 
+                    'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
+                    'SENet', 'ResNet']:
         Dataset_fea_list = Dataset_imgs
     #
     Dataset_feas = np.array(Dataset_fea_list)
@@ -89,7 +91,7 @@ class Fea_class_extractor():
         self.extractors = funcs
     #
     def fit(self, Dataset_imgs):
-        for extractor in self.extractors:
+        for idx, extractor in enumerate(self.extractors):
             if isfunction(extractor):
                 pass
             else:
@@ -97,13 +99,13 @@ class Fea_class_extractor():
     #
     def extract(self, Dataset_imgs):
         Dataset_fea_list = []
-        for extractor in self.extractors:
+        for idx, extractor in enumerate(self.extractors):
             if isfunction(extractor):
                 feas = get_Vectors(Dataset_imgs, extractor)
-                feas = np.array(feas)
             else:
                 feas = extractor.extract(Dataset_imgs)
-                feas = np.array(feas)
+            #
+            feas = np.array(feas)
             try:
                 Dataset_fea_list = np.concatenate((Dataset_fea_list, feas), axis=1)
             except:
@@ -121,21 +123,31 @@ class BOW_extractor():
         self.word_num = word_num
         self.pca1 = None
         self.pca_num1 = pca_num1
-        self.pca2 = PCA(pca_num2)
+        if pca_num2 >0:
+            self.pca2 = PCA(pca_num2)
+        else:
+            self.pca2 = None
+        
     #
     def fit_transform(self, Dataset_imgs):
         Dataset_fea_mats = get_Vectors(Dataset_imgs, self.func)
-        self.pca1, self.scaler, self.word_dict = get_bagofword(Dataset_fea_mats, self.pca_num1, self.word_num)
+        #获取词袋模型和归一化器
+        self.pca1, self.scaler, self.word_dict = get_bagofword(Dataset_fea_mats, self.pca_num1, self.word_num)  #归一化数据
+        #转化
         Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca1, self.scaler, self.word_dict)
-        Dataset_feas = self.pca2.fit_transform(Dataset_feas)
-        print (f'pca1:',self.pca1.explained_variance_ratio_)
-        print (f'pca2:',self.pca2.explained_variance_ratio_)
+        #降维
+        if self.pca2 != None:
+            Dataset_feas = self.pca2.fit_transform(Dataset_feas)
+            print (f'pca2:{sum(self.pca2.explained_variance_ratio_)}',self.pca2.explained_variance_ratio_)
         return Dataset_feas
     #
     def extract(self, Dataset_imgs):
         Dataset_fea_mats = get_Vectors(Dataset_imgs, self.func)
+        #转化
         Dataset_feas = bagofword_transform(Dataset_fea_mats, self.pca1, self.scaler, self.word_dict)
-        Dataset_feas = self.pca2.transform(Dataset_feas)
+        #降维
+        if self.pca2 != None:
+            Dataset_feas = self.pca2.transform(Dataset_feas)
         return Dataset_feas
     #
 
@@ -151,7 +163,7 @@ def feas_SIFT(img_cv):
 def fea_BRISK(img_cv):
     from skimage import feature as ft
     img_GRAY = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-    img_GRAY = (img_GRAY - np.min(img_GRAY))/(np.max(img_GRAY)-np.min(img_GRAY))*255
+    #img_GRAY = (img_GRAY - np.min(img_GRAY))/(np.max(img_GRAY)-np.min(img_GRAY))*255
     img_GRAY = img_GRAY.astype(np.uint8)
     #
     detector = cv2.BRISK_create()       #BRISK_create, AKAZE_create
@@ -172,16 +184,18 @@ def get_bagofword(feas_list, pca_num, word_num):
     for data in feas_list[1:]:
         word_bag = np.concatenate((word_bag, data), axis=0) 
     #词袋降维？
-    pca = PCA(n_components=pca_num)
-    pca.fit(word_bag)
-    #print(f'pca when get BOW:',pca.explained_variance_ratio_)
-    word_bag = pca.transform(word_bag)
+    pca = None
+    if pca_num>0:
+        pca = PCA(n_components=pca_num)
+        pca.fit(word_bag)
+        print(f'pca when get BOW:{sum(pca.explained_variance_ratio_)}',pca.explained_variance_ratio_)
+        word_bag = pca.transform(word_bag)
     #词袋归一化
     scaler = StandardScaler()
     scaler.fit(word_bag)
     word_bag = scaler.transform(word_bag)
     #训练词典
-    word_dict = KMeans(n_clusters=word_num,verbose=0, n_init=3) #视觉词典，容量500
+    word_dict = KMeans(n_clusters=word_num,verbose=1, n_init=8) #视觉词典，容量500
     word_dict.fit(word_bag)
     return pca, scaler, word_dict
 
@@ -193,7 +207,8 @@ def bagofword_transform(feas_list, pca, scaler, word_dict):
     _dtype = feas_list[0].dtype
     feas = np.zeros((len(feas_list), word_dict.n_clusters), dtype=_dtype)
     for idx, data in enumerate(feas_list):
-        data = pca.transform(data)
+        if pca != None:
+            data = pca.transform(data)
         data = scaler.transform(data)
         words = word_dict.predict(data)
         for word in words:
@@ -492,3 +507,10 @@ def get_Vectors(imgs, func, **kwargs):
     #result = np.array(result) #对于同长度向量而言可以转化为array，对于sift等视觉词特征则不行
     toc(t, func.__name__, img_num)
     return result
+
+[0.09862557,0.06156361,0.06025404,0.04783539,0.04599885,0.04527319,\
+0.04017937,0.0317695,0.03055487,0.0264494,0.02227972,0.0201353,\
+0.01963205,0.01886918,0.01717925,0.01685256,0.01613099,0.01597266,\
+0.01362541,0.01273151,0.01253677,0.01205999,0.01133234,0.01111329,\
+0.01105912,0.00983906,0.00956989,0.0084494,0.00773813,0.00768524,\
+0.00743918,0.00672156]

@@ -30,7 +30,8 @@ if __name__ =='__main__':
     print(Dataset_imgs.shape)
     print(Dataset_labels.shape)
     if_ROI, mode_fet, trained_model = load_obj('weights\\trained_model.joblib')
-    Fea_extractor = load_obj(f'weights\\Fea_extractor_{mode_fet}.joblib')
+    print(f"if_ROI={if_ROI}, mode_fet={mode_fet}")
+    Fea_extractor = load_obj(f'weights\\Fea_extractor_{if_ROI}{mode_fet}.joblib')
     
     #数据采样
     readlist = list(range(len(Dataset_imgs)))

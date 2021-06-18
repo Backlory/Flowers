@@ -20,15 +20,16 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    if_ROI = 'None'                       #R_, None
-    mode_fet = 'Colorm_SIFT'                    #Hu, Colorm, , greycomatrix, HOG, LBP, DAISY, glgcm 
-                                        #SIFT, BRISK, Colorm_SIFT, Colorm_HOG_DAISY
-                                        # 'CNN', 'alexnet', 'VGG16', 'shufflenet', 
-                                        # 'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
-                                        # 'SENet', 'ResNet', 
+    if_ROI = 'R_'                         #R_, N_
+    mode_fet = 'Colorm_SIFT'                     #Hu, Colorm,  greycomatrix, HOG, LBP, DAISY, glgcm 
+                                            #SIFT, BRISK, Colorm_SIFT, Colorm_HOG_DAISY
+                                            
+                                            # 'CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 
+                                            # 'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 
+                                            # 'SENet', 'ResNet'
 
     mode_train = 'PCA_RFC'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
-    experiment_type = 'train_ori'   #test, train_ori, train_expend
+    experiment_type = 'train_expend'   #test, train_ori, train_expend
     #
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
     experiment_dir = 'experiment/'+ timenow +'/'
@@ -46,7 +47,6 @@ if __name__ =='__main__':
     Dataset_labels = Dataset_labels[readlist]
 
     # 显示样本列表
-    np.random.seed(777)
     try:
         disp_sample_list = random.sample(range(len(readlist)), 64) #9,16,64
     except:
@@ -66,8 +66,8 @@ if __name__ =='__main__':
     #======================================================================================
     # 特征列表提取与编码(测试时需Fea_extractor)
     try:
-        X_dataset,  Y_dataset = load_obj(f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
-        Fea_extractor = load_obj( f'weights\\Fea_extractor_{mode_fet}.joblib')   #因为训练阶段训练集测试集一起训练，所以不用load
+        X_dataset,  Y_dataset = load_obj(f'data\\{experiment_type}_{if_ROI}{mode_fet}_encode.joblib')
+        Fea_extractor = load_obj( f'weights\\Fea_extractor_{if_ROI}{mode_fet}.joblib')   #因为训练阶段训练集测试集一起训练，所以不用load
     except:
         # 特征提取
         Dataset_feas, Fea_extractor = m_fet.Featurextractor(Dataset_imgs,
@@ -76,35 +76,59 @@ if __name__ =='__main__':
         # 特征编码
         X_dataset,  Y_dataset= m_fed.Featurencoder(     Dataset_feas,
                                                         Dataset_labels,
-                                                        onehot=True
+                                                        onehot=False
                                                         )
         # 数据增强
         X_dataset,  Y_dataset = m_fed.data_augment(X_dataset,  Y_dataset, mode_fet)
-        save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{if_ROI}{mode_fet}_{mode_train}_encode.joblib')
-        save_obj(Fea_extractor, f'weights\\Fea_extractor_{mode_fet}.joblib')
+        save_obj((X_dataset,  Y_dataset), f'data\\{experiment_type}_{if_ROI}{mode_fet}_encode.joblib')
+        save_obj(Fea_extractor, f'weights\\Fea_extractor_{if_ROI}{mode_fet}.joblib')
     #======================================================================================
     #K折交叉验证
     for K_fold_size in [5]:
-        skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=999) #交叉验证，分层抽样
-        
-        y_test_gt_list, y_test_pred_list = [], []
-        for idx, (train_index, test_index) in enumerate(skf.split(X_dataset, Dataset_labels)):
-            print(f'K = {idx+1} / {skf.n_splits}')
+        if K_fold_size != 0:
+            seed = random.randint(0, 9999)
+            skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=seed) #交叉验证，分层抽样
             
-            #获取数据
-            x_train, y_train = X_dataset[train_index], Y_dataset[train_index]
-            x_test, y_test_gt = X_dataset[test_index], Y_dataset[test_index]
-            
-            #训练
-            trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, display=True)
-            
-            #测试
-            y_test_pred = trained_model.predict(x_test)
+            y_test_gt_list, y_test_pred_list = [], []
+            for idx, (train_index, test_index) in enumerate(skf.split(X_dataset, Dataset_labels)):
+                print(f'K = {idx+1} / {skf.n_splits}')
+                
+                #获取数据
+                x_train, y_train = X_dataset[train_index], Y_dataset[train_index]
+                x_test, y_test_gt = X_dataset[test_index], Y_dataset[test_index]
+                
+                #训练
+                if mode_fet == 'Colorm_SIFT':
+                    weights=[200]*9+[9]*200
+                else:
+                    weights=[1]*len(x_train[0])
+                trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, weights, display=True)
+                
+                #测试
+                y_test_pred = trained_model.predict(x_test)
 
-            #统计测试结果
-            y_test_gt_list.append(y_test_gt)
-            y_test_pred_list.append(y_test_pred)
-        
+                #统计测试结果
+                y_test_gt_list.append(y_test_gt)
+                y_test_pred_list.append(y_test_pred)
+        else:
+            
+                y_test_gt_list, y_test_pred_list = [], []
+                x_train, y_train = X_dataset, Y_dataset
+                x_test, y_test_gt = X_dataset, Y_dataset
+                #训练
+                if mode_fet == 'Colorm_SIFT':
+                    weights=[200]*9+[9]*200
+                else:
+                    weights=[1]*len(x_train[0])
+                trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, weights, display=True)
+                
+                #测试
+                y_test_pred = trained_model.predict(x_test)
+
+                #统计测试结果
+                y_test_gt_list.append(y_test_gt)
+                y_test_pred_list.append(y_test_pred)
+
         #总数据统计
         print('total:')
         conf_mat = confusion_matrix(y_test_gt, y_test_pred)

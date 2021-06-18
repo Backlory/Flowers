@@ -8,7 +8,7 @@ from utils.tools import fun_run_time
 
 
 
-def get_trained_model(x_train, y_train, trainmode, display=True):
+def get_trained_model(x_train, y_train, trainmode, weights, display=True):
     '''
     调用不同的分类器
     '''
@@ -20,7 +20,9 @@ def get_trained_model(x_train, y_train, trainmode, display=True):
         temp = min(len(x_train[0]), 20) #PCA维度
         temp2 = trainmode[4:]
         trained_model = model_PCA_simply_classifier(temp2, pca_components = temp)
-        trained_model.train(x_train, y_train)
+        
+        #
+        trained_model.train(x_train, y_train, weights)
     else:
         #
         #trained_model = model_PCA_simply_classifier('SVR', pca_components = temp)
@@ -41,9 +43,11 @@ class model_PCA_simply_classifier():
     def __init__(self,classifier, pca_components):
         from sklearn.preprocessing import StandardScaler
         self.scaler = StandardScaler()
+        #self.scaler_afterPCA = StandardScaler()
         from sklearn.decomposition import PCA
         self.pca = PCA(n_components = pca_components)
         self.classifier = None
+        self.weights = []
         #
         if classifier =='SVC': #支持向量机分类
             from sklearn.svm import SVC
@@ -64,8 +68,9 @@ class model_PCA_simply_classifier():
         elif classifier == 'RFR': 
             from sklearn.ensemble import RandomForestRegressor 
             self.classifier = RandomForestRegressor(    n_estimators=100,
-                                                    criterion="gini", 
-                                                    max_depth=None)
+                                                    criterion="gini",
+                                                    max_depth=None,
+                                                    min_samples_split=5)
         elif classifier == 'NB': #朴素贝叶斯多项式
             from sklearn.naive_bayes import GaussianNB
             self.classifier = GaussianNB()
@@ -77,25 +82,73 @@ class model_PCA_simply_classifier():
             self.classifier = LogisticRegression(penalty='l2')
         elif classifier == 'GBDT':
             from sklearn.ensemble import GradientBoostingClassifier
-            self.classifier = GradientBoostingClassifier(n_estimators=200)
+            self.classifier = GradientBoostingClassifier(n_estimators=100,
+                                                            subsample=0.2,
+                                                            max_depth=7,
+                                                            min_samples_split=30,
+                                                            max_features=5,
+                                                            max_leaf_nodes = 10
+                                                            )
     #
-    def train(self, x_train, y_train):
+    def train(self, x_train, y_train, weights):
         #
         #数据归一化
         self.scaler.fit(x_train)
         x_train = self.scaler.transform(x_train)
+
+        #权重处理
+        self.weights = [x/sum(weights)*len(weights) for x in weights]
+        assert(len(self.weights) == len(x_train[0]))
+        for idx, weight in enumerate(self.weights):
+            x_train[:,idx] = x_train[:,idx] * weight
+        #print(f"self.weights={[round(x,4) for x in self.weights]}")
+
         #PCA降维
         self.pca.fit(x_train)
         x_train = self.pca.transform(x_train)
-        
+        print(f"PCA at classifier:{sum(self.pca.explained_variance_ratio_)}")
+
+        #self.scaler_afterPCA.fit(x_train)
+        #x_train = self.scaler_afterPCA.transform(x_train)
         #分类训练
         self.classifier.fit(x_train, y_train)
+        #
+        '''
+        from sklearn.model_selection import GridSearchCV
+        #param_test = {'n_estimators': list(range(1, 501, 50))} = 100
+        #param_test = {'max_depth': list(range(3, 14, 2)), 'min_samples_split': list(range(2, 30, 5))}
+        #param_test = {'max_features': list(range(1, 6, 1))}
+        #param_test = {'max_features': list(range(5, 200, 30))}
+        #param_test = {'subsample': [0.6, 0.7, 0.75, 0.8, 0.85, 0.9]}
+        gsearch2 = GridSearchCV(self.classifier,
+                                    param_grid=param_test,
+                                    scoring='accuracy', 
+                                    cv=5,
+                                    verbose = 2
+                                    )
+        grid_result  = gsearch2.fit(x_train, y_train)
+        print("Best: %f using %s" % (grid_result.best_score_,gsearch2.best_params_))
+        
+        means = grid_result.cv_results_['mean_test_score']
+        params = grid_result.cv_results_['params']
+        for mean,param in zip(means,params):
+            print("%f  with:   %r" % (mean,param))
+        return 1
+        '''
     #
     def predict(self, x_test):
         #归一化
         x_test = self.scaler.transform(x_test)
+
+        #权重处理
+        assert(len(self.weights) == len(x_test[0]))
+        for idx, weight in enumerate(self.weights):
+            x_test[:,idx] = x_test[:,idx] * weight
+
         #PCA
         x_test = self.pca.transform(x_test)
+        #
+        #x_test = self.scaler_afterPCA.transform(x_test)
         #预测
         y_test_pred = self.classifier.predict(x_test)
         return y_test_pred
