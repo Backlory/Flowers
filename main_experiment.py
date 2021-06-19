@@ -20,7 +20,7 @@ from utils.img_display import prepare_path, save_pic
 
 if __name__ =='__main__':
     #变量准备
-    if_ROI = 'R_'                         #R_, N_
+    if_ROI = 'N_'                         #R_, N_
     mode_fet = 'SENet'                     #Hu, Colorm,  greycomatrix, HOG, LBP, DAISY, glgcm 
                                             #SIFT, BRISK, Colorm_SIFT, Colorm_HOG_DAISY
                                             
@@ -29,7 +29,7 @@ if __name__ =='__main__':
                                             # 'SENet', 'ResNet'
 
     mode_train = 'SENet'              #'PCA_SVC', 'PCA_RFC', 'PCA_DT', 'PCA_NB', 'PCA_KNN', 'PCA_GBDT'    #其中RFC、KNN都挺好
-    experiment_type = 'train_expend'   #test, train_ori, train_expend
+    experiment_type = 'train_ori'   #test, train_ori, train_expend
     #
     timenow = datetime.now().strftime('%Y%m%d-%H_%M_%S')
     experiment_dir = 'experiment/'+ timenow +'/'
@@ -84,7 +84,10 @@ if __name__ =='__main__':
         save_obj(Fea_extractor, f'weights\\Fea_extractor_{if_ROI}{mode_fet}.joblib')
     #======================================================================================
     #K折交叉验证
-    for K_fold_size in [5]:
+    K_fold_size_list = [5]
+    if mode_train in ['CNN1', 'CNN2', 'alexnet', 'VGG16', 'shufflenet', 'pyramidnet', 'efficientnet','wideresnet', 'DenseNet', 'ResNeXt', 'SENet', 'ResNet']:
+        K_fold_size_list = [0]
+    for K_fold_size in K_fold_size_list:
         if K_fold_size != 0:
             seed = random.randint(0, 9999)
             skf = StratifiedKFold(n_splits=K_fold_size, shuffle = True,random_state=seed) #交叉验证，分层抽样
@@ -123,7 +126,11 @@ if __name__ =='__main__':
                 trained_model = m_ts.get_trained_model(x_train, y_train, mode_train, weights, display=True)
                 
                 #测试
-                y_test_pred = trained_model.predict(x_test)
+                try:
+                    y_test_pred = trained_model.predict(x_test)
+                except:
+                    y_test_pred = np.zeros_like(y_test_gt)
+                    print('faild to test')
 
                 #统计测试结果
                 y_test_gt_list.append(y_test_gt)

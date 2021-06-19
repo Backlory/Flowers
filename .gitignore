@@ -26,5 +26,6 @@
 *.xlsx
 *.txt
 *.opju
+*.pt
 
 test.py
